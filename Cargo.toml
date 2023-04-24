@@ -1,8 +1,8 @@
 [package]
 name = "thrift-parser"
-version = "0.0.5"
-authors = ["ihciah <ihciah@gmail.com>"]
-edition = "2018"
+version = "0.0.6"
+authors = ["ihciah <ihciah@gmail.com>", "d1vanov <dm.vl.ivanov@gmail.com>"]
+edition = "2021"
 license = "MIT"
 readme = "README.md"
 repository = "https://github.com/ihciah/thrift-parser"
@@ -10,6 +10,6 @@ description = "A simple thrift parser."
 keywords = ["thrift", "parser", "nom"]
 
 [dependencies]
-nom = "6"
+nom = "7"
 derive-newtype = "0.2"
-float-cmp = "0.8"
+float-cmp = "0.9"
