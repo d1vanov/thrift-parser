@@ -131,9 +131,10 @@ impl<'a> Parser<'a> for EnumRef<'a> {
                 preceded(Separator::parse, IdentifierRef::parse),
                 tuple((opt(Separator::parse), cchar('{'), opt(Separator::parse))),
                 separated_list0(parse_list_separator, EnumValueRef::parse),
+                opt(parse_list_separator),
                 preceded(opt(Separator::parse), cchar('}')),
             )),
-            |(_, name, _, children, _)| Self { name, children },
+            |(_, name, _, children, _, _)| Self { name, children },
         )(input)
     }
 }
