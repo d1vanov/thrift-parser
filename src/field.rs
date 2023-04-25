@@ -2,7 +2,7 @@ use nom::branch::alt;
 use nom::bytes::complete::tag;
 use nom::character::complete::char as cchar;
 use nom::combinator::{map, opt};
-use nom::sequence::{delimited, terminated, tuple};
+use nom::sequence::{delimited, preceded, terminated, tuple};
 use nom::IResult;
 
 use crate::basic::{Identifier, IdentifierRef, ListSeparator, Separator};
@@ -39,15 +39,19 @@ impl<'a> Parser<'a> for FieldRef<'a> {
                     Separator::parse,
                 )),
                 terminated(FieldTypeRef::parse, Separator::parse),
-                terminated(IdentifierRef::parse, opt(Separator::parse)),
+                IdentifierRef::parse,
                 opt(map(
-                    tuple((cchar('='), opt(Separator::parse), ConstValueRef::parse)),
-                    |(_, _, cv)| cv,
+                    tuple((
+                        opt(Separator::parse),
+                        cchar('='),
+                        opt(Separator::parse),
+                        ConstValueRef::parse,
+                    )),
+                    |(_, _, _, cv)| cv,
                 )),
-                opt(Separator::parse),
-                opt(ListSeparator::parse),
+                opt(preceded(opt(Separator::parse), ListSeparator::parse)),
             )),
-            |(id, required, type_, name, default, _, _)| Self {
+            |(id, required, type_, name, default, _)| Self {
                 id,
                 required,
                 type_,
