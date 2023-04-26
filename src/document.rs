@@ -4,7 +4,7 @@ use nom::multi::many0;
 use nom::sequence::delimited;
 use nom::IResult;
 
-use crate::basic::Separator;
+use crate::basic::{CommentRef, Multispace};
 use crate::definition::{
     Const, ConstRef, Enum, EnumRef, Exception, ExceptionRef, Service, ServiceRef, Struct,
     StructRef, Typedef, TypedefRef, Union, UnionRef,
@@ -41,7 +41,7 @@ impl<'a> Parser<'a> for DocumentRef<'a> {
         let services = &mut target.services;
 
         let (remains, _) = many0(delimited(
-            opt(Separator::parse),
+            opt(Multispace::parse),
             alt((
                 map(IncludeRef::parse, |i| includes.push(i)),
                 map(CppIncludeRef::parse, |i| cpp_includes.push(i)),
@@ -53,8 +53,9 @@ impl<'a> Parser<'a> for DocumentRef<'a> {
                 map(UnionRef::parse, |i| unions.push(i)),
                 map(ExceptionRef::parse, |i| exceptions.push(i)),
                 map(ServiceRef::parse, |i| services.push(i)),
+                map(CommentRef::parse, |_| {}),
             )),
-            opt(Separator::parse),
+            opt(Multispace::parse),
         ))(input)?;
         Ok((remains, target))
     }

@@ -131,6 +131,15 @@ impl<'a> Parser<'a> for Separator {
     }
 }
 
+#[derive(Eq, PartialEq, Debug, Copy, Clone)]
+pub struct Multispace;
+
+impl<'a> Parser<'a> for Multispace {
+    fn parse(input: &'a str) -> IResult<&'a str, Self> {
+        map(many1(map(multispace1, |_| ())), |_| Self)(input)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use crate::utils::*;

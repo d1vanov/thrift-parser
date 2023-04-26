@@ -3,10 +3,12 @@ use nom::bytes::complete::tag;
 use nom::character::complete::char as cchar;
 use nom::combinator::{map, opt};
 use nom::multi::separated_list0;
-use nom::sequence::{delimited, pair, preceded, tuple};
+use nom::sequence::{delimited, pair, preceded, terminated, tuple};
 use nom::IResult;
 
-use crate::basic::{Identifier, IdentifierRef, ListSeparator, Separator};
+use crate::basic::{
+    Comment, CommentRef, Identifier, IdentifierRef, ListSeparator, Multispace, Separator,
+};
 use crate::constant::{parse_list_separator, ConstValue, ConstValueRef, IntConstant};
 use crate::field::{Field, FieldRef};
 use crate::functions::{Function, FunctionRef};
@@ -16,6 +18,7 @@ use crate::Parser;
 // Const           ::=  'const' FieldType Identifier '=' ConstValue ListSeparator?
 #[derive(Debug, Clone, PartialEq)]
 pub struct ConstRef<'a> {
+    pub doc_comment: Option<CommentRef<'a>>,
     pub name: IdentifierRef<'a>,
     pub type_: FieldTypeRef<'a>,
     pub value: ConstValueRef<'a>,
@@ -25,6 +28,7 @@ impl<'a> Parser<'a> for ConstRef<'a> {
     fn parse(input: &'a str) -> IResult<&'a str, Self> {
         map(
             tuple((
+                terminated(opt(CommentRef::parse), opt(Multispace::parse)),
                 tag("const"),
                 preceded(Separator::parse, FieldTypeRef::parse),
                 preceded(Separator::parse, IdentifierRef::parse),
@@ -32,13 +36,19 @@ impl<'a> Parser<'a> for ConstRef<'a> {
                 preceded(opt(Separator::parse), ConstValueRef::parse),
                 opt(pair(opt(Separator::parse), ListSeparator::parse)),
             )),
-            |(_, type_, name, _, value, _)| Self { name, type_, value },
+            |(doc_comment, _, type_, name, _, value, _)| Self {
+                doc_comment,
+                name,
+                type_,
+                value,
+            },
         )(input)
     }
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Const {
+    pub doc_comment: Option<Comment>,
     pub name: Identifier,
     pub type_: FieldType,
     pub value: ConstValue,
@@ -47,6 +57,10 @@ pub struct Const {
 impl<'a> From<ConstRef<'a>> for Const {
     fn from(r: ConstRef<'a>) -> Self {
         Self {
+            doc_comment: match r.doc_comment {
+                Some(d) => Some(d.into()),
+                None => None,
+            },
             name: r.name.into(),
             type_: r.type_.into(),
             value: r.value.into(),
@@ -66,6 +80,7 @@ impl<'a> Parser<'a> for Const {
 // ContainerType   ::=  MapType | SetType | ListType
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypedefRef<'a> {
+    pub doc_comment: Option<CommentRef<'a>>,
     pub old: FieldTypeRef<'a>,
     pub alias: IdentifierRef<'a>,
 }
@@ -74,6 +89,7 @@ impl<'a> Parser<'a> for TypedefRef<'a> {
     fn parse(input: &'a str) -> IResult<&'a str, Self> {
         map(
             tuple((
+                terminated(opt(CommentRef::parse), opt(Multispace::parse)),
                 tag("typedef"),
                 preceded(
                     Separator::parse,
@@ -84,13 +100,18 @@ impl<'a> Parser<'a> for TypedefRef<'a> {
                 ),
                 preceded(Separator::parse, IdentifierRef::parse),
             )),
-            |(_, old, alias)| Self { old, alias },
+            |(doc_comment, _, old, alias)| TypedefRef {
+                doc_comment,
+                old,
+                alias,
+            },
         )(input)
     }
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Typedef {
+    pub doc_comment: Option<Comment>,
     pub old: FieldType,
     pub alias: Identifier,
 }
@@ -98,6 +119,10 @@ pub struct Typedef {
 impl<'a> From<TypedefRef<'a>> for Typedef {
     fn from(r: TypedefRef<'a>) -> Self {
         Self {
+            doc_comment: match r.doc_comment {
+                Some(d) => Some(d.into()),
+                None => None,
+            },
             old: r.old.into(),
             alias: r.alias.into(),
         }
@@ -113,6 +138,7 @@ impl<'a> Parser<'a> for Typedef {
 // Enum            ::=  'enum' Identifier '{' (Identifier ('=' IntConstant)? ListSeparator?)* '}'
 #[derive(Debug, Clone, PartialEq)]
 pub struct EnumRef<'a> {
+    pub doc_comment: Option<CommentRef<'a>>,
     pub name: IdentifierRef<'a>,
     pub children: Vec<EnumValueRef<'a>>,
 }
@@ -127,6 +153,7 @@ impl<'a> Parser<'a> for EnumRef<'a> {
     fn parse(input: &'a str) -> IResult<&'a str, Self> {
         map(
             tuple((
+                terminated(opt(CommentRef::parse), opt(Multispace::parse)),
                 tag("enum"),
                 preceded(Separator::parse, IdentifierRef::parse),
                 tuple((opt(Separator::parse), cchar('{'), opt(Separator::parse))),
@@ -134,7 +161,11 @@ impl<'a> Parser<'a> for EnumRef<'a> {
                 opt(parse_list_separator),
                 preceded(opt(Separator::parse), cchar('}')),
             )),
-            |(_, name, _, children, _, _)| Self { name, children },
+            |(doc_comment, _, name, _, children, _, _)| Self {
+                doc_comment,
+                name,
+                children,
+            },
         )(input)
     }
 }
@@ -161,6 +192,7 @@ impl<'a> Parser<'a> for EnumValueRef<'a> {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Enum {
+    pub doc_comment: Option<Comment>,
     pub name: Identifier,
     pub children: Vec<EnumValue>,
 }
@@ -174,6 +206,10 @@ pub struct EnumValue {
 impl<'a> From<EnumRef<'a>> for Enum {
     fn from(r: EnumRef<'a>) -> Self {
         Self {
+            doc_comment: match r.doc_comment {
+                Some(e) => Some(e.into()),
+                None => None,
+            },
             name: r.name.into(),
             children: r.children.into_iter().map(Into::into).collect(),
         }
@@ -204,6 +240,7 @@ impl<'a> Parser<'a> for EnumValue {
 // Struct          ::=  'struct' Identifier '{' Field* '}'
 #[derive(Debug, Clone, PartialEq)]
 pub struct StructRef<'a> {
+    pub doc_comment: Option<CommentRef<'a>>,
     pub name: IdentifierRef<'a>,
     pub fields: Vec<FieldRef<'a>>,
 }
@@ -212,19 +249,25 @@ impl<'a> Parser<'a> for StructRef<'a> {
     fn parse(input: &'a str) -> IResult<&'a str, Self> {
         map(
             tuple((
+                terminated(opt(CommentRef::parse), opt(Multispace::parse)),
                 pair(tag("struct"), Separator::parse),
                 IdentifierRef::parse,
                 delimited(opt(Separator::parse), cchar('{'), opt(Separator::parse)),
                 separated_list0(Separator::parse, FieldRef::parse),
                 pair(opt(Separator::parse), cchar('}')),
             )),
-            |(_, name, _, fields, _)| Self { name, fields },
+            |(doc_comment, _, name, _, fields, _)| Self {
+                doc_comment,
+                name,
+                fields,
+            },
         )(input)
     }
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Struct {
+    pub doc_comment: Option<Comment>,
     pub name: Identifier,
     pub fields: Vec<Field>,
 }
@@ -232,6 +275,10 @@ pub struct Struct {
 impl<'a> From<StructRef<'a>> for Struct {
     fn from(r: StructRef<'a>) -> Self {
         Self {
+            doc_comment: match r.doc_comment {
+                Some(d) => Some(d.into()),
+                None => None,
+            },
             name: r.name.into(),
             fields: r.fields.into_iter().map(Into::into).collect(),
         }
@@ -247,6 +294,7 @@ impl<'a> Parser<'a> for Struct {
 // Union          ::=  'union' Identifier '{' Field* '}'
 #[derive(Debug, Clone, PartialEq)]
 pub struct UnionRef<'a> {
+    pub doc_comment: Option<CommentRef<'a>>,
     pub name: IdentifierRef<'a>,
     pub fields: Vec<FieldRef<'a>>,
 }
@@ -255,19 +303,25 @@ impl<'a> Parser<'a> for UnionRef<'a> {
     fn parse(input: &'a str) -> IResult<&'a str, Self> {
         map(
             tuple((
+                terminated(opt(CommentRef::parse), opt(Multispace::parse)),
                 pair(tag("union"), Separator::parse),
                 IdentifierRef::parse,
                 delimited(opt(Separator::parse), cchar('{'), opt(Separator::parse)),
                 separated_list0(Separator::parse, FieldRef::parse),
                 pair(opt(Separator::parse), cchar('}')),
             )),
-            |(_, name, _, fields, _)| Self { name, fields },
+            |(doc_comment, _, name, _, fields, _)| Self {
+                doc_comment,
+                name,
+                fields,
+            },
         )(input)
     }
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Union {
+    pub doc_comment: Option<Comment>,
     pub name: Identifier,
     pub fields: Vec<Field>,
 }
@@ -275,6 +329,10 @@ pub struct Union {
 impl<'a> From<UnionRef<'a>> for Union {
     fn from(r: UnionRef<'a>) -> Self {
         Self {
+            doc_comment: match r.doc_comment {
+                Some(d) => Some(d.into()),
+                None => None,
+            },
             name: r.name.into(),
             fields: r.fields.into_iter().map(Into::into).collect(),
         }
@@ -290,6 +348,7 @@ impl<'a> Parser<'a> for Union {
 // Exception       ::=  'exception' Identifier '{' Field* '}'
 #[derive(Debug, Clone, PartialEq)]
 pub struct ExceptionRef<'a> {
+    pub doc_comment: Option<CommentRef<'a>>,
     pub name: IdentifierRef<'a>,
     pub fields: Vec<FieldRef<'a>>,
 }
@@ -298,19 +357,25 @@ impl<'a> Parser<'a> for ExceptionRef<'a> {
     fn parse(input: &'a str) -> IResult<&'a str, Self> {
         map(
             tuple((
+                terminated(opt(CommentRef::parse), opt(Multispace::parse)),
                 pair(tag("exception"), Separator::parse),
                 IdentifierRef::parse,
                 delimited(opt(Separator::parse), cchar('{'), opt(Separator::parse)),
                 separated_list0(Separator::parse, FieldRef::parse),
                 pair(opt(Separator::parse), cchar('}')),
             )),
-            |(_, name, _, fields, _)| Self { name, fields },
+            |(doc_comment, _, name, _, fields, _)| Self {
+                doc_comment,
+                name,
+                fields,
+            },
         )(input)
     }
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Exception {
+    pub doc_comment: Option<Comment>,
     pub name: Identifier,
     pub fields: Vec<Field>,
 }
@@ -318,6 +383,10 @@ pub struct Exception {
 impl<'a> From<ExceptionRef<'a>> for Exception {
     fn from(r: ExceptionRef<'a>) -> Self {
         Self {
+            doc_comment: match r.doc_comment {
+                Some(d) => Some(d.into()),
+                None => None,
+            },
             name: r.name.into(),
             fields: r.fields.into_iter().map(Into::into).collect(),
         }
@@ -333,6 +402,7 @@ impl<'a> Parser<'a> for Exception {
 // Service         ::=  'service' Identifier ( 'extends' Identifier )? '{' Function* '}'
 #[derive(Debug, Clone, PartialEq)]
 pub struct ServiceRef<'a> {
+    pub doc_comment: Option<CommentRef<'a>>,
     pub name: IdentifierRef<'a>,
     pub extension: Option<IdentifierRef<'a>>,
     pub functions: Vec<FunctionRef<'a>>,
@@ -342,6 +412,7 @@ impl<'a> Parser<'a> for ServiceRef<'a> {
     fn parse(input: &'a str) -> IResult<&'a str, Self> {
         map(
             tuple((
+                terminated(opt(CommentRef::parse), opt(Multispace::parse)),
                 delimited(
                     pair(tag("service"), Separator::parse),
                     IdentifierRef::parse,
@@ -362,7 +433,8 @@ impl<'a> Parser<'a> for ServiceRef<'a> {
                     pair(opt(Separator::parse), cchar('}')),
                 ),
             )),
-            |(name, extension, functions)| Self {
+            |(doc_comment, name, extension, functions)| Self {
+                doc_comment,
                 name,
                 extension,
                 functions,
@@ -373,6 +445,7 @@ impl<'a> Parser<'a> for ServiceRef<'a> {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Service {
+    pub doc_comment: Option<Comment>,
     pub name: Identifier,
     pub extension: Option<Identifier>,
     pub functions: Vec<Function>,
@@ -381,6 +454,10 @@ pub struct Service {
 impl<'a> From<ServiceRef<'a>> for Service {
     fn from(r: ServiceRef<'a>) -> Self {
         Self {
+            doc_comment: match r.doc_comment {
+                Some(d) => Some(d.into()),
+                None => None,
+            },
             name: r.name.into(),
             extension: r.extension.map(Into::into),
             functions: r.functions.into_iter().map(Into::into).collect(),
@@ -407,6 +484,7 @@ mod test {
                 .unwrap()
                 .1,
             ConstRef {
+                doc_comment: None,
                 name: IdentifierRef::from("is_rust_easy"),
                 type_: FieldTypeRef::Bool,
                 value: ConstValueRef::Literal(LiteralRef::from("yes!"))
@@ -419,6 +497,7 @@ mod test {
         assert_eq!(
             TypedefRef::parse("typedef i32 MyI32").unwrap().1,
             TypedefRef {
+                doc_comment: None,
                 old: FieldTypeRef::I32,
                 alias: IdentifierRef::from("MyI32")
             }
@@ -428,6 +507,7 @@ mod test {
     #[test]
     fn test_enum() {
         let expected = EnumRef {
+            doc_comment: None,
             name: IdentifierRef::from("PL"),
             children: vec![
                 EnumValueRef {
@@ -457,6 +537,7 @@ mod test {
     #[test]
     fn test_struct() {
         let expected = StructRef {
+            doc_comment: None,
             name: IdentifierRef::from("user"),
             fields: vec![
                 FieldRef {
@@ -505,6 +586,7 @@ mod test {
             exceptions: None,
         };
         let expected = ServiceRef {
+            doc_comment: None,
             name: IdentifierRef::from("DemoService"),
             extension: Some(IdentifierRef::from("BaseService")),
             functions: vec![function.clone(), function],
