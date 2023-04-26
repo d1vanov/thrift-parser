@@ -83,7 +83,7 @@ impl<'a> Parser<'a> for ListSeparator {
 
 // 1. The line begins with // or #
 // 2. The content between /* and */
-#[derive(Eq, PartialEq, Debug, Clone)]
+#[derive(derive_newtype::NewType, Eq, PartialEq, Debug, Clone)]
 pub struct CommentRef<'a>(&'a str);
 
 impl<'a> Parser<'a> for CommentRef<'a> {
@@ -99,7 +99,7 @@ impl<'a> Parser<'a> for CommentRef<'a> {
     }
 }
 
-#[derive(Eq, PartialEq, Debug, Clone)]
+#[derive(derive_newtype::NewType, Eq, PartialEq, Debug, Clone)]
 pub struct Comment(String);
 
 impl<'a> From<CommentRef<'a>> for Comment {
