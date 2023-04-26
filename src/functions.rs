@@ -39,7 +39,11 @@ impl<'a> Parser<'a> for FunctionRef<'a> {
                 terminated(
                     delimited(
                         cchar('('),
-                        separated_list0(Separator::parse, FieldRef::parse),
+                        delimited(
+                            opt(Separator::parse),
+                            separated_list0(Separator::parse, FieldRef::parse),
+                            opt(Separator::parse),
+                        ),
                         cchar(')'),
                     ),
                     opt(Separator::parse),
@@ -48,7 +52,11 @@ impl<'a> Parser<'a> for FunctionRef<'a> {
                     pair(tag("throws"), Separator::parse),
                     delimited(
                         cchar('('),
-                        separated_list0(Separator::parse, FieldRef::parse),
+                        delimited(
+                            opt(Separator::parse),
+                            separated_list0(Separator::parse, FieldRef::parse),
+                            opt(Separator::parse),
+                        ),
                         cchar(')'),
                     ),
                 )),
