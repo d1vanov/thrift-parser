@@ -7,7 +7,7 @@ use nom::sequence::{delimited, pair, preceded, terminated, tuple};
 use nom::IResult;
 
 use crate::basic::{
-    Comment, CommentRef, Identifier, IdentifierRef, ListSeparator, Multispace, Separator,
+    Comment, CommentRef, Identifier, IdentifierRef, Linefeed, ListSeparator, Separator, Space,
 };
 use crate::constant::{parse_list_separator, ConstValue, ConstValueRef, IntConstant};
 use crate::field::{Field, FieldRef};
@@ -28,7 +28,10 @@ impl<'a> Parser<'a> for ConstRef<'a> {
     fn parse(input: &'a str) -> IResult<&'a str, Self> {
         map(
             tuple((
-                terminated(opt(CommentRef::parse), opt(Multispace::parse)),
+                opt(terminated(
+                    CommentRef::parse,
+                    terminated(Linefeed::parse, opt(Space::parse)),
+                )),
                 tag("const"),
                 preceded(Separator::parse, FieldTypeRef::parse),
                 preceded(Separator::parse, IdentifierRef::parse),
@@ -89,7 +92,10 @@ impl<'a> Parser<'a> for TypedefRef<'a> {
     fn parse(input: &'a str) -> IResult<&'a str, Self> {
         map(
             tuple((
-                terminated(opt(CommentRef::parse), opt(Multispace::parse)),
+                opt(terminated(
+                    CommentRef::parse,
+                    terminated(Linefeed::parse, opt(Space::parse)),
+                )),
                 tag("typedef"),
                 preceded(
                     Separator::parse,
@@ -153,7 +159,10 @@ impl<'a> Parser<'a> for EnumRef<'a> {
     fn parse(input: &'a str) -> IResult<&'a str, Self> {
         map(
             tuple((
-                terminated(opt(CommentRef::parse), opt(Multispace::parse)),
+                opt(terminated(
+                    CommentRef::parse,
+                    terminated(Linefeed::parse, opt(Space::parse)),
+                )),
                 tag("enum"),
                 preceded(Separator::parse, IdentifierRef::parse),
                 tuple((opt(Separator::parse), cchar('{'), opt(Separator::parse))),
@@ -249,7 +258,10 @@ impl<'a> Parser<'a> for StructRef<'a> {
     fn parse(input: &'a str) -> IResult<&'a str, Self> {
         map(
             tuple((
-                terminated(opt(CommentRef::parse), opt(Multispace::parse)),
+                opt(terminated(
+                    CommentRef::parse,
+                    terminated(Linefeed::parse, opt(Space::parse)),
+                )),
                 pair(tag("struct"), Separator::parse),
                 IdentifierRef::parse,
                 delimited(opt(Separator::parse), cchar('{'), opt(Separator::parse)),
@@ -303,7 +315,10 @@ impl<'a> Parser<'a> for UnionRef<'a> {
     fn parse(input: &'a str) -> IResult<&'a str, Self> {
         map(
             tuple((
-                terminated(opt(CommentRef::parse), opt(Multispace::parse)),
+                opt(terminated(
+                    CommentRef::parse,
+                    terminated(Linefeed::parse, opt(Space::parse)),
+                )),
                 pair(tag("union"), Separator::parse),
                 IdentifierRef::parse,
                 delimited(opt(Separator::parse), cchar('{'), opt(Separator::parse)),
@@ -357,7 +372,10 @@ impl<'a> Parser<'a> for ExceptionRef<'a> {
     fn parse(input: &'a str) -> IResult<&'a str, Self> {
         map(
             tuple((
-                terminated(opt(CommentRef::parse), opt(Multispace::parse)),
+                opt(terminated(
+                    CommentRef::parse,
+                    terminated(Linefeed::parse, opt(Space::parse)),
+                )),
                 pair(tag("exception"), Separator::parse),
                 IdentifierRef::parse,
                 delimited(opt(Separator::parse), cchar('{'), opt(Separator::parse)),
@@ -412,7 +430,10 @@ impl<'a> Parser<'a> for ServiceRef<'a> {
     fn parse(input: &'a str) -> IResult<&'a str, Self> {
         map(
             tuple((
-                terminated(opt(CommentRef::parse), opt(Multispace::parse)),
+                opt(terminated(
+                    CommentRef::parse,
+                    terminated(Linefeed::parse, opt(Space::parse)),
+                )),
                 delimited(
                     pair(tag("service"), Separator::parse),
                     IdentifierRef::parse,

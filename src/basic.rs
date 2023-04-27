@@ -1,6 +1,6 @@
 use nom::branch::alt;
 use nom::bytes::complete::{tag, take_till, take_until, take_while};
-use nom::character::complete::{char as cchar, multispace1, one_of, satisfy};
+use nom::character::complete::{char as cchar, multispace1, one_of, satisfy, space1};
 use nom::combinator::{map, opt, recognize};
 use nom::multi::many1;
 use nom::sequence::{delimited, preceded, tuple};
@@ -137,6 +137,24 @@ pub struct Multispace;
 impl<'a> Parser<'a> for Multispace {
     fn parse(input: &'a str) -> IResult<&'a str, Self> {
         map(many1(map(multispace1, |_| ())), |_| Self)(input)
+    }
+}
+
+#[derive(Eq, PartialEq, Debug, Copy, Clone)]
+pub struct Linefeed;
+
+impl<'a> Parser<'a> for Linefeed {
+    fn parse(input: &'a str) -> IResult<&'a str, Self> {
+        map(alt((tag("\r"), tag("\n"))), |_| Self)(input)
+    }
+}
+
+#[derive(Eq, PartialEq, Debug, Copy, Clone)]
+pub struct Space;
+
+impl<'a> Parser<'a> for Space {
+    fn parse(input: &'a str) -> IResult<&'a str, Self> {
+        map(many1(map(space1, |_| ())), |_| Self)(input)
     }
 }
 
